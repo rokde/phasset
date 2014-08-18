@@ -1,5 +1,7 @@
 <?php namespace Rokde\Phasset\Repositories;
 
+use ReflectionClass;
+use Rokde\Phasset\Exceptions\FilterUnknownException;
 use Rokde\Phasset\Filters\Filterable;
 
 class FilterRepository
@@ -11,24 +13,7 @@ class FilterRepository
 	 *
 	 * @var array|Filterable[]
 	 */
-	private $filters;
-
-	/**
-	 *
-	 *
-	 * @var \Illuminate\Foundation\Application
-	 */
-	private $app;
-
-	/**
-	 * initializes with application ioc container
-	 *
-	 * @param Application $app
-	 */
-	public function __construct(Application $app)
-	{
-		$this->app = $app;
-	}
+	private $filters = array();
 
 	/**
 	 * sets filter, overwrites all existing ones
@@ -68,14 +53,22 @@ class FilterRepository
 	}
 
 	/**
-	 *
+	 * resolves a filter by name
 	 *
 	 * @param string $filter
 	 * @param array $params
+	 * @throws \Rokde\Phasset\Exceptions\FilterUnknownException
 	 * @return Filterable
 	 */
 	private function resolveFilter($filter, array $params = [])
 	{
-		return $this->app->make($filter, $params);
+		$class = new ReflectionClass($filter);
+		if (!$class->isInstantiable())
+			throw new FilterUnknownException($filter);
+
+		if (empty($params))
+			return $class->newInstance();
+
+		return $class->newInstanceArgs($params);
 	}
 }
